@@ -1,0 +1,277 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Duale SURT Task con Parametri Configurabili</title>
+    <style>
+        html, body {
+            margin: 0; padding: 0;
+            height: 100%; width: 100%;
+            background-color: black;
+            font-family: Arial, sans-serif;
+            color: white;
+            overflow: hidden;
+        }
+        #startScreen {
+            position: fixed;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            z-index: 10;
+        }
+        #logo {
+            max-width: 180px;
+            height: auto;
+            margin-bottom: 20px;
+        }
+        #configPanel {
+            background-color: #222;
+            padding: 20px;
+            border: 2px solid #666;
+            border-radius: 8px;
+            display: inline-block;
+            text-align: left;
+        }
+        #configPanel label {
+            display: block;
+            margin-bottom: 10px;
+        }
+        #configPanel input {
+            width: 200px;
+            margin-top: 4px;
+        }
+        #taskArea {
+            display: none;
+        }
+        .quadrant {
+            position: absolute;
+            width: 50%; height: 50%;
+            overflow: hidden; cursor: pointer;
+        }
+        .q1 { top: 0; left: 0; }
+        .q2 { top: 0; left: 50%; }
+        .q3 { top: 50%; left: 0; }
+        .q4 { top: 50%; left: 50%; }
+        .cross-line {
+            position: absolute;
+            background-color: white;
+            z-index: 1;
+        }
+        .horizontal-line {
+            top: 50%; left: 0;
+            width: 100%; height: 2px;
+        }
+        .vertical-line {
+            top: 0; left: 50%;
+            width: 2px; height: 100%;
+        }
+        .distractor, .target {
+            position: absolute;
+            width: 20px; height: 20px;
+            border: 2px solid;
+        }
+        .distractor {
+            border-color: green;
+        }
+        .target {
+            border-color: red;
+            border-radius: 50%;
+        }
+        .output {
+            position: absolute;
+            bottom: 10px;
+            width: 100%; text-align: center;
+            font-size: 18px;
+            z-index: 3;
+        }
+        .button {
+            padding: 6px 12px;
+            background: #444;
+            border: none;
+            color: white;
+            font-size: 14px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        #stopButton {
+            position: absolute;
+            top: 10px; right: 10px;
+            z-index: 20;
+        }
+    </style>
+</head>
+<body>
+
+<div id="startScreen">
+    <img src="logo bianco sob.png" id="logo" alt="UNISOB Logo">
+    <div id="configPanel">
+        <label>Participant ID:<br><input type="text" id="participantID" value="P01"></label>
+        <label>Number of Trials:<br><input type="number" id="numTrials" value="10"></label>
+        <label>Stimulus Timeout (ms):<br><input type="number" id="stimulusTimeout" value="5000"></label>
+        <label>Total Trial Time (ms):<br><input type="number" id="totalTrialTime" value="10000"></label>
+        <button class="button" onclick="startDualTask()">Start Task</button>
+    </div>
+</div>
+
+<div id="taskArea">
+    <div class="cross-line horizontal-line"></div>
+    <div class="cross-line vertical-line"></div>
+    <div class="quadrant q1" data-quadrant="1"></div>
+    <div class="quadrant q2" data-quadrant="2"></div>
+    <div class="quadrant q3" data-quadrant="3"></div>
+    <div class="quadrant q4" data-quadrant="4"></div>
+    <div class="output" id="output">Dual SURT Task Running...</div>
+    <button class="button" id="stopButton" onclick="stopTask()">Stop</button>
+</div>
+
+<script>
+let participantID, totalTrials;
+let stimulusTimeout = 5000;
+let totalCycleTime = 10000;
+let trialData = [];
+let currentTrial = 0;
+let responseGiven = false;
+let timeoutID = null;
+let targetQuadrant = null;
+let phase = 1;
+let trialStartTime = null;
+let startTime = null;
+let running = false;
+const distractorsPerTrial = 20;
+
+function clearQuadrants() {
+    document.querySelectorAll('.quadrant').forEach(q => q.innerHTML = '');
+}
+
+function randomPosition(quadrant) {
+    const qWidth = quadrant.clientWidth;
+    const qHeight = quadrant.clientHeight;
+    const x = Math.random() * (qWidth - 30);
+    const y = Math.random() * (qHeight - 30);
+    return { left: x, top: y };
+}
+
+function addDistractors() {
+    for (let i = 0; i < distractorsPerTrial; i++) {
+        const qIndex = Math.floor(Math.random() * 4) + 1;
+        const quadrant = document.querySelector(`.q${qIndex}`);
+        const pos = randomPosition(quadrant);
+        const dist = document.createElement('div');
+        dist.classList.add('distractor');
+        dist.style.left = `${pos.left}px`;
+        dist.style.top = `${pos.top}px`;
+        quadrant.appendChild(dist);
+    }
+}
+
+function showTarget() {
+    clearQuadrants();
+    responseGiven = false;
+    targetQuadrant = Math.floor(Math.random() * 4) + 1;
+    const targetDiv = document.createElement('div');
+    targetDiv.classList.add('target');
+    const quadrant = document.querySelector(`.q${targetQuadrant}`);
+    const pos = randomPosition(quadrant);
+    targetDiv.style.left = `${pos.left}px`;
+    targetDiv.style.top = `${pos.top}px`;
+    quadrant.appendChild(targetDiv);
+    addDistractors();
+    trialStartTime = new Date().getTime();
+
+    timeoutID = setTimeout(() => {
+        if (!responseGiven && phase === 1) {
+            recordTrial(null, true);
+            setTimeout(() => { nextTrial(); }, totalCycleTime - 5000);
+        }
+    }, stimulusTimeout);
+}
+
+function recordTrial(clickedQuadrant, timeout) {
+    const rt = timeout ? null : (new Date().getTime() - trialStartTime);
+    trialData.push({
+        trial: currentTrial + 1,
+        phase,
+        targetQuadrant,
+        clickedQuadrant: clickedQuadrant ? parseInt(clickedQuadrant) : null,
+        correct: clickedQuadrant ? (parseInt(clickedQuadrant) === targetQuadrant) : false,
+        responseTime_ms: rt,
+        responseTime_s: rt ? (rt / 1000).toFixed(2) : null,
+        timeout: timeout
+    });
+}
+
+function nextTrial() {
+    if (!running) return;
+    if (currentTrial >= totalTrials) {
+        document.getElementById("output").innerText = "All trials complete. Data downloaded.";
+        downloadCSV();
+        return;
+    }
+    phase = 1;
+    startTime = new Date().getTime();
+    showTarget();
+}
+
+function proceedToSecondTask() {
+    phase = 2;
+    showTarget();
+    timeoutID = setTimeout(() => {
+        if (!responseGiven) recordTrial(null, true);
+        clearQuadrants();
+        setTimeout(() => { nextTrial(); }, totalCycleTime - (new Date().getTime() - startTime));
+    }, stimulusTimeout);
+}
+
+function stopTask() {
+    running = false;
+    clearTimeout(timeoutID);
+    document.getElementById("output").innerText = "Task stopped. Data downloaded.";
+    downloadCSV();
+}
+
+function downloadCSV() {
+    const now = new Date();
+    const filename = `${participantID}_${String(now.getFullYear()).slice(2)}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}.csv`;
+    let csv = "Trial,Phase,TargetQuadrant,ClickedQuadrant,Correct,ResponseTime_ms,ResponseTime_s,Timeout\n";
+    trialData.forEach(row => {
+        csv += `${row.trial},${row.phase},${row.targetQuadrant},${row.clickedQuadrant},${row.correct},${row.responseTime_ms},${row.responseTime_s},${row.timeout}\n`;
+    });
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+}
+
+document.querySelectorAll('.quadrant').forEach(q => {
+    q.addEventListener('click', () => {
+        if (!trialStartTime || responseGiven) return;
+        clearTimeout(timeoutID);
+        const clickedQuadrant = q.getAttribute('data-quadrant');
+        responseGiven = true;
+        recordTrial(clickedQuadrant, false);
+        if (phase === 1) {
+            proceedToSecondTask();
+        } else {
+            clearQuadrants();
+            setTimeout(() => { nextTrial(); }, totalCycleTime - (new Date().getTime() - startTime));
+        }
+    });
+});
+
+function startDualTask() {
+    participantID = document.getElementById('participantID').value;
+    totalTrials = parseInt(document.getElementById('numTrials').value);
+    stimulusTimeout = parseInt(document.getElementById('stimulusTimeout').value);
+    totalCycleTime = parseInt(document.getElementById('totalTrialTime').value);
+    document.getElementById('startScreen').style.display = 'none';
+    document.getElementById('taskArea').style.display = 'block';
+    running = true;
+    trialData = [];
+    nextTrial();
+}
+</script>
+</body>
+</html>
