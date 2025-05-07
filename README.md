@@ -1,66 +1,60 @@
 
-# SURT Task – Adaptive Visual Attention Task for Driving Simulation
+# SURT Double Task WebApp
 
 This repository contains a customizable implementation of a **Surrogate Research Task (SURT)** designed to be used during driving simulation experiments.
 
 The task presents visual targets and distractors within four screen quadrants. Participants are required to touch the quadrant containing the red target while ignoring the green distractors. The interface supports full-screen interaction and is optimized for **touch devices (e.g. iPad)**.
 
-## 🧪 Key Features
+## Features
 
-- ✅ Customizable parameters via configuration panel
-- ✅ Participant ID entry
-- ✅ Real-time response logging
-- ✅ Timeout and IVI (Inter-trial Visual Interval) control
-- ✅ Fixed 10-second rhythm between stimuli
-- ✅ CSV export with file name based on participant ID and timestamp
-- ✅ Fully offline, HTML-based implementation (no backend or internet required after loading)
+- Sequential visual stimuli (target + distractors) per trial
+- Conditional second task only if a response is given to the first
+- Fully configurable: trial count, stimulus duration, total trial time
+- Timed execution logic enforcing fixed-duration cycles
+- Auditory cue playback at the start of each trial
+- CSV export with millisecond precision response timing and accuracy
 
-## 🧰 Configuration Options
+## Parameters
 
-On launch, users can customize:
+| Setting           | Description                                     |
+|-------------------|-------------------------------------------------|
+| `Number of Trials` | Total number of 10s (or user-defined) cycles    |
+| `Stimulus Timeout` | Max duration (ms) of each task before timeout   |
+| `Total Trial Time` | Fixed duration (ms) for each trial cycle        |
 
-| Parameter             | Description                                                  | Default |
-|-----------------------|--------------------------------------------------------------|---------|
-| Participant ID        | Identifier used in the filename                              | `P01`   |
-| Number of Trials      | Maximum number of trials (auto-stops at end)                 | `100`   |
-| Distractors per Trial | Number of green outlined squares shown per trial             | `20`    |
-| Stimulus Timeout      | Max time (ms) to respond before timeout is recorded          | `5000`  |
-| Total Trial Time      | Fixed time (ms) between the start of two consecutive trials  | `10000` |
+Trials proceed autonomously with no pauses between them.
 
-## 🗃️ Output Format
+## Data Logging
 
-At the end of the task (or if stopped manually), a `.csv` file will be downloaded. The filename is automatically generated in the format:
-  [id][yymmdd][hhmm].csv
-For example:
-  P01_250409_1746.csv
-The file includes the following columns:
-- `Trial`
-- `TargetQuadrant`
-- `ClickedQuadrant`
-- `Correct` (true/false)
-- `ResponseTime_ms`
-- `ResponseTime_s`
-- `Timeout` (true/false)
+Each response (or timeout) is logged as a row in the exported `.csv`. Columns include:
 
-## 📱 Deployment & Usage
+- `Trial`: Sequential index (1-based)
+- `Task`: 1 or 2
+- `TargetQuadrant`: Correct location (1–4)
+- `ClickedQuadrant`: User selection
+- `Correct`: `true` or `false` (including timeouts)
+- `ResponseTime_ms`: Latency in ms
+- `ResponseTime_s`: Latency in seconds (2 decimals)
+- `Timeout`: `true` if no response was recorded in time
 
-The SURT task is designed to run in a web browser and is compatible with both desktop and mobile devices.
-You can access the official hosted version here:
+## Usage
 
-👉 https://robpresta.github.io/surt-task/
+1. Open `double_task_timing_working.html` in a modern browser (Chrome recommended)
+2. Configure parameters
+3. Press **Start**
+4. On completion or interruption, a CSV file will be downloaded
 
-This implementation is distributed as an open resource.  
-Feel free to reuse, adapt, or integrate it in your own research or design workflow.  
-If you do so, a citation or reference is always appreciated.
+The auditory cue (`PLIN.mp3`) must be placed in the same directory as the HTML file.
 
-## 🎓 Credits
+## Deployment
 
-Developed by [Roberta Presta](mailto:roberta.presta@unisob.na.it) – University of Suor Orsola Benincasa (UNISOB), Naples  
-Logo and visual identity: UNISOB
+No backend required. This app runs entirely client-side and offline. Suitable for lab-based cognitive experiments or remote deployment.
 
----
+## License
 
-📬 For feedback, contributions, or collaboration proposals, feel free to open an issue or contact me directly.
+MIT License — see [`LICENSE`](./LICENSE) for details.
 
+## Maintainer
 
-
+Developed and maintained by Roberta Presta - HumaDes @ Scienza Nuova - Università degli Studi Suor Orsola Benincasa.
+Contact: roberta.presta@unisob.na.it
